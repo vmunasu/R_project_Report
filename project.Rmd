@@ -1,0 +1,147 @@
+---
+title: "Alzheimer's disease_Analysis Project Vikas"
+author: "Vikas Munasu"
+date: "2023-05-03"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#install.packages('dplyr')
+#install.packages("randomForest")
+#install.packages("caret")
+#install.packages("rpart.plot")
+library(dplyr)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+library(caret)
+```
+## Summary 
+
+The project involve prediction of the Alzheimer's disease at its ealiest stages. It has included the predictive models random forest, decision tree model, and logistic regression model. The project intended to identify the most accurate model that could be used in predicting the Alzheimer's disease at early stages. Therefore, the project has utilized data downloaded from the https://dementia.talkbank.org/access/ website for the prediction. The data contains 3,012 rows and 8 observations. As Diagnosed is later created in the project to represent identified Alzheimer's disease as 1 and not identified as 0. The predictions have shown that decision tree model is the most accurate model for predicting Alzheimer's disease at early stages. 
+
+## Introduction
+
+Alzheimer's disease is a progressive disease that affects people's brains and has been noted to have diverse impacts on millions of individuals globally. The disease has been identified to severely impact memory loss and affected individuals being unable to talk in a conversation. Health professionals have noted a challenge in identifying Alzheimer's disease in its early stages due to a lack of accurate and simplified tests. Therefore, the project's main focus include the creation of a machine learning method that is essential and can be used by a health professional to identify Alzheimer's disease early stages. The project is important since it provides the capability of diagnosing Alzheimer's disease at its early stages. Therefore, the health professionals are provided with an opportunity of identifying advanced outcomes on treatment and also ensure that there is no progression of Alzheimer's disease due to early diagnosis of the disease.
+
+## Literature Review
+
+The project is based on previous works that have tried to understand how speech analytics can be utilized to identify early signs of Alzheimer's disease. In their research, Tanveer et al. (2020), the authors utilized machine learning algorithms in performing analysis on speech patterns, where they made some meaningful insights into various changes associated with Alzheimer's disease. In another study by Konig et al. (2018), there was research on using speech features for detecting the early signs of individuals suffering from cognitive impairment. In these two papers, there has been an illustration of having a high chance of using speech analysis to detect early signs in individuals who have Alzheimer's disease.
+
+## Data
+
+Data used for this project is downloaded from the https://dementia.talkbank.org/access/ website. The data for this project include:
+```{r echo=FALSE}
+dataset <- read.csv("C:/Users/Vikas/Desktop/R project/Alzheimer's disease_info.csv")
+glimpse(dataset)
+```
+Confirm if the dataset has any missing values  for each variable.
+```{r echo=FALSE}
+colSums(is.na(dataset))
+```
+Recode the Diagnosis variable to a new variable Diagnosed to 1s and 0s for being diagnosed with Alzheimer's Disease (AD) and others, respectively. This is done by indexing the vectors. 
+```{r echo=FALSE}
+
+dataset$Diagnosed[dataset$Diagnosis == "AD"] <- "1"
+dataset$Diagnosed[dataset$Diagnosis == "HC"] <- "0"
+dataset$Diagnosed[dataset$Diagnosis == "a-mdMCI-R"] <- "0"
+dataset$Diagnosed[dataset$Diagnosis == "a-mdMCI-E"] <- "0"
+
+# Convert to a factor
+dataset$Diagnosed <- factor(dataset$Diagnosed)
+glimpse(dataset)
+
+```
+View the created Diagnosed variable. 
+```{r echo=FALSE}
+table(dataset$Diagnosed)
+```
+## Methodology
+
+The data is split into 70% training set and 30% testing set. 
+
+```{r echo=FALSE}
+set.seed(100)
+split_dataset<- sample(c(rep(0, 0.7 * nrow(dataset)), rep(1, 0.3 * nrow(dataset))))
+table(split_dataset)
+```
+Create both the training set and testing set as dataset_train and dataset_test respectively. 
+```{r}
+dataset_train <- dataset[split_dataset == 0, ]
+dataset_test <- dataset[split_dataset== 1, ] 
+```
+
+## Build Random Forest Model
+
+Create the random forest using Diagnosed as target variable and tone.level, fluency.level, and hard.Pause predictor variables. 
+```{r echo=FALSE}
+rf <- randomForest(Diagnosed~ tone.level+fluency.level + hard.Pause, data=dataset_train, proximity=TRUE)
+rf
+```
+We use the created random forest to make predictions on test data through confusion matrix approach (Finnstats, 2021). 
+```{r echo=FALSE}
+predictions_1 <- predict(rf, dataset_test)
+confusionMatrix(predictions_1, dataset_test$ Diagnosed)
+```
+From the predictions, it is clear that the model has accuracy of 71.98% in predicting the diagnosis of AD (Alzheimer's Disease) using the variables tone.level, fluency.level, and hard.Pause. 
+
+## Build Decision Tree Model
+
+Using the rpart library (Finnstats, 2021b), the decision tree model is built. 
+``` {r echo=FALSE}
+decision_tree <- rpart(Diagnosed~ tone.level+ fluency.level + hard.Pause, data = dataset_test, method = 'class')
+rpart.plot(decision_tree, extra = 106)
+```
+
+Using the predict() function in R, the test dataset is predicted. Then a table illustrating the count of patients classified to be diagnosed with AD and those not is created. 
+```{r echo=FALSE}
+predictions_2 <-predict(decision_tree, dataset_test, type = 'class')
+table_mat <- table(dataset_test$Diagnosed,predictions_2)
+table_mat
+```
+To evaluate the classification performance of the decision tree model, the confusion matrix method has been applied. The prediction accuracy of the test data is depicted to be 75.85%. 
+```{r echo=FALSE}
+test_accuracy <- sum(diag(table_mat)) / sum(table_mat)
+print(paste('Accuracy for decision tree is:', test_accuracy))
+```
+## Build Logistic Regression Model
+
+Create the Logistic Regression Model using Diagnosed as target variable and tone.level, fluency.level, and hard.Pause predictor variables
+
+```{r echo=FALSE}
+#fit logistic regression model
+model_LRM <- glm(Diagnosed~ tone.level+fluency.level + hard.Pause, family="binomial", data=dataset_train)
+
+#view model summary
+summary(model_LRM)
+```
+  
+```{r echo=FALSE}
+dataset_test$model_prob <- predict(model_LRM, dataset_test, type = "response")
+```
+```{r echo=FALSE}
+dataset_test <- dataset_test  %>% mutate(model_predict = 1*(model_prob > .53) + 0)
+```
+
+Test the Accuracy of the logistic regression model
+```{r echo=FALSE}
+dataset_test <- dataset_test %>% mutate(accurate = 1*(model_predict == Diagnosed))
+Accuracy<-sum(dataset_test$accurate)/nrow(dataset_test)
+print(paste('Accuracy for logistic regression analysis:', Accuracy))
+```
+## Results and Conclusion
+
+From the prediction analysis conducted in this project, random forest, decision tree, and logistic regression predictive models have been developed. The analysis have been a comparative analysis for the three models. The goal is to identify the best model that can be implemented for identifying the Alzheimer's Disease at its earliest stages. The results of the three models have depicted that decision tree model has the highest accuracy of prediction, at 75.85%. Therefore, it is concluded that the best model to use in prediction of the Alzheimer's Disease is Decision Tree model. 
+
+## References
+
+Konig, A., Satt, A., Sorin, A., Hoory, R., Derreumaux, A., David, R., & Robert, P. H. (2018). Use of speech analyses within a mobile application for the assessment of cognitive impairment in elderly people. Current Alzheimer Research, 15(2), 120-129.
+
+Tanveer, M., Richhariya, B., Khan, R. U., Rashid, A. H., Khanna, P., Prasad, M., & Lin, C. T. (2020). Machine learning techniques for the diagnosis of Alzheimer’s disease: A review. ACM Transactions on Multimedia Computing, Communications, and Applications (TOMM), 16(1s), 1-35.
+Finnstats. (2021b). Decision Trees in R | R-bloggers. R-bloggers. https://www.r-bloggers.com/2021/04/decision-trees-in-r/
+
+Finnstats. (2021). Random Forest in R | R-bloggers. R-bloggers. https://www.r-bloggers.com/2021/04/random-forest-in-r/
+
+
+
